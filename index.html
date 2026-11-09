@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Planche Tactique Rugby Pro</title>
+    <!-- Tailwind CSS pour un design moderne sombre -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0f172a;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glass-btn {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.15s ease;
+        }
+        .glass-btn:hover {
+            background: rgba(51, 65, 85, 0.9);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+        .glass-btn.active {
+            background: rgba(16, 185, 129, 0.25);
+            border-color: #10b981;
+            color: #34d399;
+        }
+    </style>
+</head>
+<body class="flex flex-col h-screen text-slate-100">
+
+    <!-- BARRE EN-TÊTE PRINCIPALE -->
+    <header class="glass-panel z-20 flex flex-wrap items-center justify-between px-3 py-2 gap-2 shadow-lg">
+        <!-- Titre & Logo -->
+        <div class="flex items-center gap-2">
+            <div class="bg-emerald-600 p-2 rounded-xl text-white shadow-md">
+                <i data-lucide="clipboard" class="w-5 h-5"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-sm leading-tight text-white">Planche Tactique Rugby</h1>
+                <p class="text-[10px] text-slate-400">Outil EPS & Entraînement</p>
+            </div>
+        </div>
+
+        <!-- SELECTIONS FORMAT & TERRAIN -->
+        <div class="flex items-center gap-1.5 flex-wrap">
+            <!-- Formats -->
+            <div class="flex bg-slate-800/80 p-1 rounded-xl border border-slate-700">
+                <button onclick="setFormat('XV')" id="btn-fmt-XV" class="glass-btn px-2.5 py-1 text-xs rounded-lg font-semibold active">15s</button>
+                <button onclick="setFormat('X')" id="btn-fmt-X" class="glass-btn px-2.5 py-1 text-xs rounded-lg font-semibold">10s</button>
+                <button onclick="setFormat('VII')" id="btn-fmt-VII" class="glass-btn px-2.5 py-1 text-xs rounded-lg font-semibold">7s</button>
+                <button onclick="setFormat('V')" id="btn-fmt-V" class="glass-btn px-2.5 py-1 text-xs rounded-lg font-semibold">Touch 5</button>
+            </div>
+
+            <!-- Orientation / Vue -->
+            <div class="flex bg-slate-800/80 p-1 rounded-xl border border-slate-700">
+                <button onclick="toggleOrientation()" id="btn-orientation" class="glass-btn px-2.5 py-1 text-xs rounded-lg flex items-center gap-1">
+                    <i data-lucide="rotate-cw" class="w-3.5 h-3.5"></i>
+                    <span id="label-orientation">Horiz.</span>
+                </button>
+                <button onclick="toggleHalfField()" id="btn-halffield" class="glass-btn px-2.5 py-1 text-xs rounded-lg flex items-center gap-1">
+                    <i data-lucide="scan" class="w-3.5 h-3.5"></i>
+                    <span id="label-field">Plein terrain</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- REINITIALISATIONS -->
+        <div class="flex items-center gap-2">
+            <button onclick="toggleSidebar()" class="glass-btn px-2.5 py-1 text-xs rounded-xl text-emerald-400 border-emerald-500/40 flex items-center gap-1 hover:bg-emerald-500/20">
+                <i data-lucide="layers" class="w-3.5 h-3.5"></i> Secteurs & Effectifs
+            </button>
+            <button onclick="resetPlacement()" class="glass-btn px-2.5 py-1 text-xs rounded-xl text-slate-300 flex items-center gap-1 hover:text-white">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Replacer
+            </button>
+            <button onclick="clearDrawings()" class="glass-btn px-2.5 py-1 text-xs rounded-xl text-rose-400 flex items-center gap-1 hover:bg-rose-500/20">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Effacer tracés
+            </button>
+        </div>
+    </header>
+
+    <!-- ZONE DE TRAVAIL PRINCIPALE (CANVAS + OVERLAYS) -->
+    <div class="relative flex-1 w-full h-full overflow-hidden bg-slate-950 flex">
+        
+        <!-- PANNEAU LATÉRAL : SECTEURS & GESTION DES JOUEURS (REPLIABLE) -->
+        <aside id="sidebar-players" class="glass-panel z-20 w-72 h-full flex flex-col p-3 gap-3 overflow-y-auto transition-all duration-300 transform -translate-x-full absolute left-0 top-0 bottom-0 shadow-2xl">
+            <div class="flex items-center justify-between border-b border-slate-700/80 pb-2">
+                <h2 class="font-bold text-xs text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <i data-lucide="users" class="w-4 h-4"></i> Filtre Lignes / Joueurs
+                </h2>
+                <button onclick="toggleSidebar()" class="text-slate-400 hover:text-white p-1">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <!-- BOUTONS ACTIONS RAPIDES PAR SECTEUR -->
+            <div class="flex flex-col gap-1.5">
+                <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Activer par secteur</span>
+                <div class="grid grid-cols-2 gap-1">
+                    <button onclick="toggleSector('avants')" class="glass-btn text-[11px] py-1 px-2 rounded-lg text-left hover:text-emerald-300 flex items-center gap-1">
+                        <i data-lucide="shield" class="w-3 h-3 text-amber-400"></i> Avants (1 à 8)
+                    </button>
+                    <button onclick="toggleSector('arrieres')" class="glass-btn text-[11px] py-1 px-2 rounded-lg text-left hover:text-emerald-300 flex items-center gap-1">
+                        <i data-lucide="zap" class="w-3 h-3 text-sky-400"></i> Arrières (9 à 15)
+                    </button>
+                    <button onclick="toggleSector('1ere_ligne')" class="glass-btn text-[10px] py-1 px-1.5 rounded-lg text-slate-300">1ère Ligne (1-2-3)</button>
+                    <button onclick="toggleSector('2eme_ligne')" class="glass-btn text-[10px] py-1 px-1.5 rounded-lg text-slate-300">2ème Ligne (4-5)</button>
+                    <button onclick="toggleSector('3eme_ligne')" class="glass-btn text-[10px] py-1 px-1.5 rounded-lg text-slate-300">3ème Ligne (6-7-8)</button>
+                    <button onclick="toggleSector('charniere')" class="glass-btn text-[10px] py-1 px-1.5 rounded-lg text-slate-300">Charnière (9-10)</button>
+                    <button onclick="toggleSector('trois_quarts')" class="glass-btn text-[10px] py-1 px-1.5 rounded-lg text-slate-300">3/4 & Arrière (11-15)</button>
+                    <button onclick="toggleSector('all')" class="glass-btn text-[10px] py-1 px-1.5 rounded-lg text-emerald-400 border-emerald-500/30">Tout afficher</button>
+                </div>
+            </div>
+
+            <!-- CHECKBOXES JOUEURS INDIVIDUELS -->
+            <div class="flex-1 overflow-y-auto flex flex-col gap-3 pr-1 mt-1">
+                <!-- Équipe Attaque (Bleu) -->
+                <div>
+                    <div class="flex items-center justify-between text-[11px] font-bold text-blue-400 mb-1 border-b border-blue-500/30 pb-0.5">
+                        <span>Attaque (Bleus)</span>
+                        <button onclick="toggleTeam('attack', true)" class="text-[9px] text-slate-400 hover:text-white">Tous</button>
+                    </div>
+                    <div id="checklist-attack" class="grid grid-cols-3 gap-1"></div>
+                </div>
+
+                <!-- Équipe Défense (Rouge) -->
+                <div>
+                    <div class="flex items-center justify-between text-[11px] font-bold text-rose-400 mb-1 border-b border-rose-500/30 pb-0.5">
+                        <span>Défense (Rouges)</span>
+                        <button onclick="toggleTeam('defense', true)" class="text-[9px] text-slate-400 hover:text-white">Tous</button>
+                    </div>
+                    <div id="checklist-defense" class="grid grid-cols-3 gap-1"></div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- CANVAS PRINCIPAL DE DESSIN ET DE DÉPLACEMENT -->
+        <canvas id="tactical-stage" class="absolute inset-0 cursor-crosshair w-full h-full"></canvas>
+
+        <!-- BARRE D'OUTILS TRACÉS (À GAUCHE) -->
+        <div class="absolute top-4 left-4 z-10 flex flex-col gap-2 glass-panel p-2 rounded-2xl shadow-xl">
+            <button onclick="setTool('select')" id="tool-select" class="glass-btn p-2.5 rounded-xl text-slate-200 active" title="Déplacer joueurs / Vue">
+                <i data-lucide="mouse-pointer" class="w-5 h-5"></i>
+            </button>
+            <div class="h-px bg-slate-700/60 my-0.5"></div>
+            <button onclick="setTool('run')" id="tool-run" class="glass-btn p-2.5 rounded-xl text-yellow-400" title="Course (Ligne pleine avec flèche)">
+                <i data-lucide="move-up-right" class="w-5 h-5"></i>
+            </button>
+            <button onclick="setTool('pass')" id="tool-pass" class="glass-btn p-2.5 rounded-xl text-sky-400" title="Passe (Pointillés avec flèche)">
+                <i data-lucide="move-right" class="w-5 h-5"></i>
+            </button>
+            <button onclick="setTool('kick')" id="tool-kick" class="glass-btn p-2.5 rounded-xl text-purple-400" title="Coup de pied (Discontinu)">
+                <i data-lucide="trending-up" class="w-5 h-5"></i>
+            </button>
+            <button onclick="setTool('draw')" id="tool-draw" class="glass-btn p-2.5 rounded-xl text-emerald-400" title="Crayon libre">
+                <i data-lucide="pencil" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <!-- REGLAGES TAILLE PIONS & CONTROLES ZOOM (EN BAS À GAUCHE) -->
+        <div class="absolute bottom-6 left-4 z-10 flex flex-col gap-2 glass-panel p-2.5 rounded-2xl shadow-xl w-48">
+            <div class="flex items-center justify-between text-[11px] font-semibold text-slate-300">
+                <span class="flex items-center gap-1"><i data-lucide="users" class="w-3.5 h-3.5 text-emerald-400"></i> Taille Pions</span>
+                <span id="token-size-val" class="text-emerald-400">100%</span>
+            </div>
+            <input type="range" id="token-scale-slider" min="0.3" max="2.0" step="0.1" value="1.0" oninput="updateTokenScale(this.value)" class="w-full accent-emerald-500 cursor-pointer h-1.5 bg-slate-700 rounded-lg">
+
+            <div class="h-px bg-slate-700/60 my-0.5"></div>
+
+            <!-- Controles Zoom -->
+            <div class="flex items-center justify-between gap-1">
+                <button onclick="zoomIn()" class="glass-btn p-2 rounded-xl text-white flex-1 flex justify-center" title="Zoomer">
+                    <i data-lucide="zoom-in" class="w-4 h-4"></i>
+                </button>
+                <button onclick="resetZoom()" class="glass-btn p-2 rounded-xl text-white flex-1 flex justify-center" title="Réinitialiser vue">
+                    <i data-lucide="maximize-2" class="w-4 h-4"></i>
+                </button>
+                <button onclick="zoomOut()" class="glass-btn p-2 rounded-xl text-white flex-1 flex justify-center" title="Dézoomer">
+                    <i data-lucide="zoom-out" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- PANNEAU DE PHASES & SEQUENCES DE JEU (EN BAS AU CENTRE) -->
+        <div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 glass-panel p-2 rounded-2xl shadow-2xl">
+            <button onclick="prevPhase()" class="glass-btn p-2 rounded-xl text-slate-300 hover:text-white">
+                <i data-lucide="chevron-left" class="w-5 h-5"></i>
+            </button>
+            
+            <div class="flex items-center gap-2 px-2">
+                <span class="text-xs font-bold text-slate-400">PHASE</span>
+                <span id="phase-indicator" class="text-base font-extrabold text-emerald-400 bg-slate-800 px-3 py-0.5 rounded-lg border border-slate-700">1</span>
+                <span id="total-phases" class="text-xs text-slate-500">/ 1</span>
+            </div>
+
+            <button onclick="nextPhase()" class="glass-btn p-2 rounded-xl text-slate-300 hover:text-white">
+                <i data-lucide="chevron-right" class="w-5 h-5"></i>
+            </button>
+
+            <div class="h-6 w-px bg-slate-700/80 mx-1"></div>
+
+            <button onclick="addPhase()" class="glass-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-emerald-400 flex items-center gap-1 hover:bg-emerald-500/20">
+                <i data-lucide="plus-circle" class="w-4 h-4"></i> + Phase
+            </button>
+
+            <button onclick="playAnimation()" id="btn-play" class="glass-btn px-4 py-1.5 rounded-xl text-xs font-bold text-white bg-emerald-600/80 hover:bg-emerald-500 flex items-center gap-1.5 shadow-lg">
+                <i data-lucide="play" class="w-4 h-4 fill-current"></i> Lancer Anim
+            </button>
+        </div>
+    </div>
+
+    <!-- CODE JAVASCRIPT DE L'APPLICATION -->
+    <script>
+        // --- VARIABLES GLOBALES ET CONFIGURATION ---
+        let canvas, ctx;
+
+        // Dimensions officielles du terrain (en mètres fictifs)
+        const FIELD_DIM = { length: 100, width: 70, inGoal: 10, totalLength: 120 };
+        
+        let currentFormat = 'XV'; // XV, X, VII, V
+        let isVertical = false;   // Vue horizontale ou verticale
+        let isHalfField = false;  // Plein terrain ou demi-terrain
+        let isSidebarOpen = false;
+
+        // Transformation de la vue (Zoom et Pan)
+        let transform = { x: 0, y: 0, scale: 1.0 };
+        let activeTool = 'select';
+        let isDraggingPan = false;
+        let dragStart = { x: 0, y: 0 };
+        let draggedToken = null;
+        let tokenScaleMultiplier = 1.0;
+
+        // Multi-touch Pinch-to-zoom
+        let initialPinchDistance = null;
+        let initialPinchScale = 1;
+        let pinchCenterScreen = { x: 0, y: 0 };
+
+        // Tracés tactiques
+        let isDrawing = false;
+        let currentPath = [];
+        let drawings = [];
+
+        // Gestion des phases et animations
+        let phases = [];
+        let currentPhaseIndex = 0;
+        let isAnimating = false;
+
+        // Pions actuels sur le terrain
+        let tokens = [];
+
+        // --- INITIALISATION SÉCURISÉE (DOMContentLoaded) ---
+        document.addEventListener('DOMContentLoaded', () => {
+            canvas = document.getElementById('tactical-stage');
+            if (!canvas) return;
+            
+            ctx = canvas.getContext('2d');
+            lucide.createIcons();
+
+            // Ajustement automatique de la taille du canvas
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            // Initialisation des données et événements
+            initDefaultTokens();
+            setupEventListeners();
+            resetZoom();
+
+            // Lancement du cycle de rendu
+            requestAnimationFrame(draw);
+        });
+
+        function toggleSidebar() {
+            isSidebarOpen = !isSidebarOpen;
+            const sidebar = document.getElementById('sidebar-players');
+            if (sidebar) {
+                if (isSidebarOpen) {
+                    sidebar.classList.remove('-translate-x-full');
+                } else {
+                    sidebar.classList.add('-translate-x-full');
+                }
+            }
+        }
+
+        function renderPlayerChecklist() {
+            const attackBox = document.getElementById('checklist-attack');
+            const defenseBox = document.getElementById('checklist-defense');
+            if (!attackBox || !defenseBox) return;
+
+            let attackHTML = '';
+            let defenseHTML = '';
+
+            tokens.forEach(t => {
+                if (t.type === 'ball') return;
+                const isAttack = t.team === 'attack';
+                const checked = t.visible !== false ? 'checked' : '';
+                const html = `
+                    <label class="flex items-center gap-1 bg-slate-800/60 p-1 rounded border border-slate-700/60 text-[10px] cursor-pointer hover:bg-slate-700/60">
+                        <input type="checkbox" ${checked} onchange="toggleTokenVisibility('${t.id}', this.checked)" class="accent-emerald-500 rounded w-3 h-3">
+                        <span class="font-bold ${isAttack ? 'text-blue-300' : 'text-rose-300'}">N°${t.number}</span>
+                    </label>
+                `;
+
+                if (isAttack) attackHTML += html;
+                else defenseHTML += html;
+            });
+
+            attackBox.innerHTML = attackHTML;
+            defenseBox.innerHTML = defenseHTML;
+        }
+
+        function toggleTokenVisibility(id, visible) {
+            const token = tokens.find(t => t.id === id);
+            if (token) {
+                token.visible = visible;
+                saveCurrentPhaseState();
+                requestAnimationFrame(draw);
+            }
+        }
+
+        function toggleTeam(team, visible) {
+            tokens.forEach(t => {
+                if (t.team === team && t.type !== 'ball') {
+                    t.visible = visible;
+                }
+            });
+            renderPlayerChecklist();
+            saveCurrentPhaseState();
+            requestAnimationFrame(draw);
+        }
+
+        function toggleSector(sector) {
+            let nums = [];
+            if (sector === '1ere_ligne') nums = [1, 2, 3];
+            else if (sector === '2eme_ligne') nums = [4, 5];
+            else if (sector === '3eme_ligne') nums = [6, 7, 8];
+            else if (sector === 'avants') nums = [1, 2, 3, 4, 5, 6, 7, 8];
+            else if (sector === 'charniere') nums = [9, 10];
+            else if (sector === 'trois_quarts') nums = [11, 12, 13, 14, 15];
+            else if (sector === 'arrieres') nums = [9, 10, 11, 12, 13, 14, 15];
+            else if (sector === 'all') nums = Array.from({length: 15}, (_, i) => i + 1);
+
+            tokens.forEach(t => {
+                if (t.type !== 'ball') {
+                    t.visible = nums.includes(t.number);
+                }
+            });
+
+            renderPlayerChecklist();
+            saveCurrentPhaseState();
+            requestAnimationFrame(draw);
+        }
+
+        function resizeCanvas() {
+            if (!canvas) return;
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight - 56; // Moins la hauteur de la barre d'en-tête
+            requestAnimationFrame(draw);
+        }
+
+        // --- GESTION DES FORMATS ET JOUEURS ---
+        function setFormat(fmt) {
+            currentFormat = fmt;
+            document.querySelectorAll('[id^="btn-fmt-"]').forEach(btn => btn.classList.remove('active'));
+            const activeBtn = document.getElementById(`btn-fmt-${fmt}`);
+            if (activeBtn) activeBtn.classList.add('active');
+
+            initDefaultTokens();
+            saveCurrentPhaseState();
+            requestAnimationFrame(draw);
+        }
+
+        function initDefaultTokens() {
+            tokens = [];
+            let count = 15;
+            if (currentFormat === 'X') count = 10;
+            if (currentFormat === 'VII') count = 7;
+            if (currentFormat === 'V') count = 5;
+
+            const midY = FIELD_DIM.width / 2;
+
+            // Équipe Attaque (Bleue - Numérotée)
+            for (let i = 1; i <= count; i++) {
+                let x = 45 - (i * 2.2);
+                let y = midY + ((i % 2 === 0 ? 1 : -1) * (i * 2.5));
+                tokens.push({ id: `A${i}`, team: 'attack', number: i, x: Math.max(15, x), y: Math.max(5, Math.min(65, y)), visible: true });
+            }
+
+            // Équipe Défense (Rouge - Numérotée)
+            for (let i = 1; i <= count; i++) {
+                let x = 65 + (i * 1.5);
+                let y = midY + ((i % 2 === 0 ? 1 : -1) * (i * 2.8));
+                tokens.push({ id: `D${i}`, team: 'defense', number: i, x: Math.min(105, x), y: Math.max(5, Math.min(65, y)), visible: true });
+            }
+
+            // Ballon de Rugby
+            tokens.push({ id: 'BALL', type: 'ball', team: 'ball', x: 48, y: midY, visible: true });
+
+            renderPlayerChecklist();
+
+            phases = [{ tokens: JSON.parse(JSON.stringify(tokens)), drawings: [] }];
+            currentPhaseIndex = 0;
+            drawings = [];
+            updatePhaseUI();
+        }
+
+        // --- BASCOULEMENT VUE ET ORIENTATION ---
+        function toggleOrientation() {
+            isVertical = !isVertical;
+            document.getElementById('label-orientation').innerText = isVertical ? 'Vert.' : 'Horiz.';
+            resetZoom();
+        }
+
+        function toggleHalfField() {
+            isHalfField = !isHalfField;
+            document.getElementById('label-field').innerText = isHalfField ? 'Demi terrain' : 'Plein terrain';
+            resetZoom();
+        }
+
+        function updateTokenScale(val) {
+            tokenScaleMultiplier = parseFloat(val);
+            document.getElementById('token-size-val').innerText = `${Math.round(val * 100)}%`;
+            requestAnimationFrame(draw);
+        }
+
+        // --- RECADRAGE AUTOMATIQUE ET ZOOM ---
+        function resetZoom() {
+            if (!canvas) return;
+            const margin = 20;
+            const targetWidth = isHalfField ? FIELD_DIM.totalLength / 2 + 10 : FIELD_DIM.totalLength + margin;
+            const targetHeight = FIELD_DIM.width + margin;
+
+            let scaleX, scaleY;
+            if (!isVertical) {
+                scaleX = canvas.width / targetWidth;
+                scaleY = canvas.height / targetHeight;
+            } else {
+                scaleX = canvas.width / targetHeight;
+                scaleY = canvas.height / targetWidth;
+            }
+
+            transform.scale = Math.min(scaleX, scaleY) * 0.9;
+            transform.x = (canvas.width / 2);
+            transform.y = (canvas.height / 2);
+            requestAnimationFrame(draw);
+        }
+
+        function zoomIn() { applyZoom(1.3, canvas.width / 2, canvas.height / 2); }
+        function zoomOut() { applyZoom(0.7, canvas.width / 2, canvas.height / 2); }
+
+        function applyZoom(factor, centerX, centerY) {
+            const newScale = Math.min(Math.max(0.3, transform.scale * factor), 10.0);
+            transform.x = centerX - (centerX - transform.x) * (newScale / transform.scale);
+            transform.y = centerY - (centerY - transform.y) * (newScale / transform.scale);
+            transform.scale = newScale;
+            requestAnimationFrame(draw);
+        }
+
+        // --- GESTION DES OUTILS DE DESSIN ---
+        function setTool(tool) {
+            activeTool = tool;
+            document.querySelectorAll('[id^="tool-"]').forEach(btn => btn.classList.remove('active'));
+            const activeBtn = document.getElementById(`tool-${tool}`);
+            if (activeBtn) activeBtn.classList.add('active');
+        }
+
+        function getToolColor(tool) {
+            switch(tool) {
+                case 'run': return '#facc15';  // Jaune
+                case 'pass': return '#38bdf8'; // Sky Blue
+                case 'kick': return '#c084fc'; // Violet
+                case 'draw': return '#34d399'; // Vert
+                default: return '#ffffff';
+            }
+        }
+
+        function clearDrawings() {
+            drawings = [];
+            if (phases[currentPhaseIndex]) {
+                phases[currentPhaseIndex].drawings = [];
+            }
+            requestAnimationFrame(draw);
+        }
+
+        function resetPlacement() {
+            initDefaultTokens();
+            resetZoom();
+        }
+
+        // --- INTERACTIONS TACTILES ET SOURIS ---
+        function setupEventListeners() {
+            const getPos = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const touch = e.touches ? e.touches[0] : e;
+                return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+            };
+
+            const getPinchDistance = (e) => {
+                const t1 = e.touches[0];
+                const t2 = e.touches[1];
+                return Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+            };
+
+            const getPinchCenter = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const t1 = e.touches[0];
+                const t2 = e.touches[1];
+                return {
+                    x: ((t1.clientX + t2.clientX) / 2) - rect.left,
+                    y: ((t1.clientY + t2.clientY) / 2) - rect.top
+                };
+            };
+
+            const toFieldCoords = (screenPos) => {
+                let dx = (screenPos.x - transform.x) / transform.scale;
+                let dy = (screenPos.y - transform.y) / transform.scale;
+
+                if (isVertical) {
+                    let temp = dx;
+                    dx = dy;
+                    dy = -temp;
+                }
+
+                return {
+                    x: dx + FIELD_DIM.totalLength / 2,
+                    y: dy + FIELD_DIM.width / 2
+                };
+            };
+
+            const handleDown = (e) => {
+                if (isAnimating) return;
+
+                // Pinch zoom à 2 doigts
+                if (e.touches && e.touches.length === 2) {
+                    draggedToken = null;
+                    isDraggingPan = false;
+                    isDrawing = false;
+                    initialPinchDistance = getPinchDistance(e);
+                    initialPinchScale = transform.scale;
+                    pinchCenterScreen = getPinchCenter(e);
+                    return;
+                }
+
+                const pos = getPos(e);
+                const fieldPos = toFieldCoords(pos);
+
+                if (activeTool === 'select') {
+                    // Vérification de clic sur un pion visible uniquement
+                    const hitToken = tokens.slice().reverse().find(t => {
+                        if (t.visible === false) return false;
+                        const radius = (t.type === 'ball' ? 5 : 4) * tokenScaleMultiplier;
+                        return Math.hypot(fieldPos.x - t.x, fieldPos.y - t.y) <= radius;
+                    });
+
+                    if (hitToken) {
+                        draggedToken = hitToken;
+                    } else {
+                        isDraggingPan = true;
+                        dragStart = { x: pos.x - transform.x, y: pos.y - transform.y };
+                    }
+                } else {
+                    isDrawing = true;
+                    currentPath = [{ x: fieldPos.x, y: fieldPos.y }];
+                }
+            };
+
+            const handleMove = (e) => {
+                if (isAnimating) return;
+
+                if (e.touches && e.touches.length === 2 && initialPinchDistance) {
+                    const currentDist = getPinchDistance(e);
+                    const factor = currentDist / initialPinchDistance;
+                    applyZoom(factor, pinchCenterScreen.x, pinchCenterScreen.y);
+                    return;
+                }
+
+                const pos = getPos(e);
+                const fieldPos = toFieldCoords(pos);
+
+                if (draggedToken) {
+                    draggedToken.x = Math.max(0, Math.min(FIELD_DIM.totalLength, fieldPos.x));
+                    draggedToken.y = Math.max(0, Math.min(FIELD_DIM.width, fieldPos.y));
+                    saveCurrentPhaseState();
+                    requestAnimationFrame(draw);
+                } else if (isDraggingPan) {
+                    transform.x = pos.x - dragStart.x;
+                    transform.y = pos.y - dragStart.y;
+                    requestAnimationFrame(draw);
+                } else if (isDrawing) {
+                    currentPath.push({ x: fieldPos.x, y: fieldPos.y });
+                    requestAnimationFrame(draw);
+                }
+            };
+
+            const handleUp = (e) => {
+                if (e.touches && e.touches.length < 2) {
+                    initialPinchDistance = null;
+                }
+                draggedToken = null;
+                isDraggingPan = false;
+
+                if (isDrawing) {
+                    isDrawing = false;
+                    if (currentPath.length > 1) {
+                        drawings.push({
+                            type: activeTool,
+                            points: [...currentPath],
+                            color: getToolColor(activeTool)
+                        });
+                        if (phases[currentPhaseIndex]) {
+                            phases[currentPhaseIndex].drawings = JSON.parse(JSON.stringify(drawings));
+                        }
+                    }
+                    currentPath = [];
+                    requestAnimationFrame(draw);
+                }
+            };
+
+            canvas.addEventListener('mousedown', handleDown);
+            window.addEventListener('mousemove', handleMove);
+            window.addEventListener('mouseup', handleUp);
+
+            canvas.addEventListener('touchstart', (e) => { handleDown(e); }, { passive: true });
+            window.addEventListener('touchmove', (e) => { handleMove(e); }, { passive: true });
+            window.addEventListener('touchend', handleUp);
+
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const factor = e.deltaY < 0 ? 1.15 : 0.85;
+                applyZoom(factor, e.clientX, e.clientY);
+            }, { passive: false });
+        }
+
+        // --- DESSIN PRINCIPAL SUR LE CANVAS ---
+        function draw() {
+            if (!ctx || !canvas) return;
+
+            ctx.save();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Appliquer la translation globale et le zoom
+            ctx.translate(transform.x, transform.y);
+            ctx.scale(transform.scale, transform.scale);
+
+            if (isVertical) {
+                ctx.rotate(Math.PI / 2);
+            }
+
+            // Décaler pour centrer l'origine sur le milieu du terrain
+            ctx.translate(-FIELD_DIM.totalLength / 2, -FIELD_DIM.width / 2);
+
+            // 1. Dessiner le terrain de rugby
+            drawRugbyField();
+
+            // 2. Dessiner les tracés tactiques
+            drawTacticalLines();
+
+            // 3. Dessiner les pions
+            drawTokens();
+
+            ctx.restore();
+        }
+
+        // --- RENDU VECTORIEL DU TERRAIN ---
+        function drawRugbyField() {
+            const L = FIELD_DIM.totalLength;
+            const W = FIELD_DIM.width;
+            const ig = FIELD_DIM.inGoal;
+
+            // Pelouse
+            ctx.fillStyle = '#15803d'; // Vert gazon
+            ctx.fillRect(0, 0, L, W);
+
+            // Rayures de pelouse
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+            for (let i = 0; i < L; i += 10) {
+                if ((i / 10) % 2 === 0) {
+                    ctx.fillRect(i, 0, 10, W);
+                }
+            }
+
+            // Lignes du terrain
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 0.6;
+
+            // Contour
+            ctx.strokeRect(0, 0, L, W);
+
+            // Lignes d'en-but (0m et 100m)
+            ctx.beginPath();
+            ctx.moveTo(ig, 0); ctx.lineTo(ig, W);
+            ctx.moveTo(L - ig, 0); ctx.lineTo(L - ig, W);
+            ctx.stroke();
+
+            // Ligne médiane (50m)
+            ctx.beginPath();
+            ctx.moveTo(L / 2, 0); ctx.lineTo(L / 2, W);
+            ctx.stroke();
+
+            // Lignes des 22m
+            ctx.beginPath();
+            ctx.moveTo(ig + 22, 0); ctx.lineTo(ig + 22, W);
+            ctx.moveTo(L - ig - 22, 0); ctx.lineTo(L - ig - 22, W);
+            ctx.stroke();
+
+            // Lignes pointillées (10m, 5m, 15m)
+            ctx.setLineDash([1.5, 1.5]);
+
+            // Lignes des 10m
+            ctx.beginPath();
+            ctx.moveTo(L / 2 - 10, 0); ctx.lineTo(L / 2 - 10, W);
+            ctx.moveTo(L / 2 + 10, 0); ctx.lineTo(L / 2 + 10, W);
+            ctx.stroke();
+
+            // Pointillés longitudinaux 5m et 15m
+            ctx.beginPath();
+            ctx.moveTo(0, 5); ctx.lineTo(L, 5);
+            ctx.moveTo(0, 15); ctx.lineTo(L, 15);
+            ctx.moveTo(0, W - 15); ctx.lineTo(L, W - 15);
+            ctx.moveTo(0, W - 5); ctx.lineTo(L, W - 5);
+            ctx.stroke();
+
+            ctx.setLineDash([]); // Reset trait plein
+
+            // Poteaux de Rugby (H)
+            drawGoalPosts(ig, W / 2);
+            drawGoalPosts(L - ig, W / 2);
+        }
+
+        function drawGoalPosts(x, y) {
+            ctx.strokeStyle = '#f8fafc';
+            ctx.lineWidth = 1.2;
+
+            // Traverse
+            ctx.beginPath();
+            ctx.moveTo(x, y - 2.8);
+            ctx.lineTo(x, y + 2.8);
+            ctx.stroke();
+
+            // Poteaux verticaux
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(x - 0.4, y - 3, 0.8, 0.8);
+            ctx.fillRect(x - 0.4, y + 2.2, 0.8, 0.8);
+        }
+
+        // --- RENDU DES TRACÉS TACTIQUES ---
+        function drawTacticalLines() {
+            const allDrawings = [...drawings];
+            if (isDrawing && currentPath.length > 1) {
+                allDrawings.push({ type: activeTool, points: currentPath, color: getToolColor(activeTool) });
+            }
+
+            allDrawings.forEach(d => {
+                if (!d.points || d.points.length < 2) return;
+
+                ctx.save();
+                ctx.strokeStyle = d.color;
+                ctx.fillStyle = d.color;
+                ctx.lineWidth = 1.2;
+
+                if (d.type === 'pass') ctx.setLineDash([2, 2]);
+                if (d.type === 'kick') ctx.setLineDash([4, 2]);
+
+                ctx.beginPath();
+                ctx.moveTo(d.points[0].x, d.points[0].y);
+                for (let i = 1; i < d.points.length; i++) {
+                    ctx.lineTo(d.points[i].x, d.points[i].y);
+                }
+                ctx.stroke();
+
+                // Flèche au bout si course, passe ou pied
+                if (['run', 'pass', 'kick'].includes(d.type)) {
+                    const p1 = d.points[d.points.length - 2];
+                    const p2 = d.points[d.points.length - 1];
+                    const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+                    const headLen = 2.5;
+
+                    ctx.setLineDash([]);
+                    ctx.beginPath();
+                    ctx.moveTo(p2.x, p2.y);
+                    ctx.lineTo(p2.x - headLen * Math.cos(angle - Math.PI / 6), p2.y - headLen * Math.sin(angle - Math.PI / 6));
+                    ctx.lineTo(p2.x - headLen * Math.cos(angle + Math.PI / 6), p2.y - headLen * Math.sin(angle + Math.PI / 6));
+                    ctx.closePath();
+                    ctx.fill();
+                }
+
+                ctx.restore();
+            });
+        }
+
+        // --- RENDU DES PIONS NUMÉROTÉS ET BALLON ---
+        function drawTokens() {
+            tokens.forEach(t => {
+                if (t.visible === false) return; // Si masqué, on ne dessine pas
+
+                ctx.save();
+                ctx.translate(t.x, t.y);
+
+                // Maintenir les numéros droits selon la rotation
+                if (isVertical) {
+                    ctx.rotate(-Math.PI / 2);
+                }
+
+                const baseRadius = t.type === 'ball' ? 3.5 : 3.8;
+                const r = baseRadius * tokenScaleMultiplier;
+
+                if (t.type === 'ball') {
+                    // Ballon de Rugby
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, r * 1.3, r * 0.8, Math.PI / 4, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 0.5;
+                    ctx.stroke();
+                } else {
+                    // Joueur (Attaque Bleue / Défense Rouge)
+                    const isAttack = t.team === 'attack';
+                    
+                    // Ombre
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                    ctx.beginPath();
+                    ctx.arc(0.4, 0.4, r, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Pion principal
+                    ctx.fillStyle = isAttack ? '#2563eb' : '#dc2626';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, r, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Bordure
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 0.8;
+                    ctx.stroke();
+
+                    // Numéro du joueur
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = `bold ${Math.max(2.5, r * 1.1)}px system-ui, sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(t.number, 0, 0.2);
+                }
+
+                ctx.restore();
+            });
+        }
+
+        // --- GESTION DES PHASES ET ANIMATIONS ---
+        function saveCurrentPhaseState() {
+            if (phases[currentPhaseIndex]) {
+                phases[currentPhaseIndex].tokens = JSON.parse(JSON.stringify(tokens));
+            }
+        }
+
+        function updatePhaseUI() {
+            document.getElementById('phase-indicator').innerText = currentPhaseIndex + 1;
+            document.getElementById('total-phases').innerText = `/ ${phases.length}`;
+        }
+
+        function addPhase() {
+            saveCurrentPhaseState();
+            const newTokens = JSON.parse(JSON.stringify(tokens));
+            phases.splice(currentPhaseIndex + 1, 0, { tokens: newTokens, drawings: [] });
+            currentPhaseIndex++;
+            drawings = [];
+            updatePhaseUI();
+            requestAnimationFrame(draw);
+        }
+
+        function prevPhase() {
+            if (currentPhaseIndex > 0) {
+                saveCurrentPhaseState();
+                currentPhaseIndex--;
+                tokens = JSON.parse(JSON.stringify(phases[currentPhaseIndex].tokens));
+                drawings = JSON.parse(JSON.stringify(phases[currentPhaseIndex].drawings || []));
+                renderPlayerChecklist();
+                updatePhaseUI();
+                requestAnimationFrame(draw);
+            }
+        }
+
+        function nextPhase() {
+            if (currentPhaseIndex < phases.length - 1) {
+                saveCurrentPhaseState();
+                currentPhaseIndex++;
+                tokens = JSON.parse(JSON.stringify(phases[currentPhaseIndex].tokens));
+                drawings = JSON.parse(JSON.stringify(phases[currentPhaseIndex].drawings || []));
+                renderPlayerChecklist();
+                updatePhaseUI();
+                requestAnimationFrame(draw);
+            }
+        }
+
+        function playAnimation() {
+            if (phases.length < 2 || isAnimating) return;
+
+            saveCurrentPhaseState();
+            isAnimating = true;
+
+            function animateBetweenPhases(fromIndex, toIndex, onComplete) {
+                const startTokens = phases[fromIndex].tokens;
+                const endTokens = phases[toIndex].tokens;
+                const duration = 1000;
+                const startTime = performance.now();
+
+                function frame(now) {
+                    const elapsed = now - startTime;
+                    const progress = Math.min(1, elapsed / duration);
+                    const easeProgress = progress < 0.5 ? 2 * progress * progress : -1 + (4 - 2 * progress) * progress;
+
+                    tokens = startTokens.map(st => {
+                        const et = endTokens.find(e => e.id === st.id) || st;
+                        return {
+                            ...st,
+                            x: st.x + (et.x - st.x) * easeProgress,
+                            y: st.y + (et.y - st.y) * easeProgress
+                        };
+                    });
+
+                    draw();
+
+                    if (progress < 1) {
+                        requestAnimationFrame(frame);
+                    } else {
+                        onComplete();
+                    }
+                }
+                requestAnimationFrame(frame);
+            }
+
+            function runSequence(idx) {
+                if (idx >= phases.length - 1) {
+                    isAnimating = false;
+                    currentPhaseIndex = phases.length - 1;
+                    updatePhaseUI();
+                    return;
+                }
+                currentPhaseIndex = idx;
+                updatePhaseUI();
+                animateBetweenPhases(idx, idx + 1, () => {
+                    setTimeout(() => runSequence(idx + 1), 300);
+                });
+            }
+
+            runSequence(0);
+        }
+    </script>
+</body>
+</html>
